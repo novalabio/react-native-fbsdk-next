@@ -61,12 +61,34 @@ export type LoginResult = {
   declinedPermissions?: Array<string>,
 };
 
+/**
+ * Shows the results of a limited login operation.
+ */
+ export type LimitedLoginResult = {
+  isCancelled: boolean,
+  email: string,
+  id: string,
+  token: string,
+  name: string
+};
+
 module.exports = {
   /**
    * Logs the user in with the requested permissions.
    */
   logInWithPermissions(permissions: Array<string>): Promise<LoginResult> {
     return LoginManager.logInWithPermissions(permissions);
+  },
+
+  /**
+   * Logs the user with the requested permissions using the limited version
+   */
+  limitedLogin(permissions: Array<string>, nonce: string = null): Promise<LimitedLoginResult>  {
+    if (Platform.OS === 'ios') {
+      return LoginManager.limitedLogin(permissions, nonce);
+    }
+
+    Promise.reject('Limited login is not available for this platform in this moment');
   },
 
   /**

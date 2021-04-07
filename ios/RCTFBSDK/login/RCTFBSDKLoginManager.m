@@ -77,6 +77,38 @@ RCT_EXPORT_METHOD(logInWithPermissions:(NSArray<NSString *> *)permissions
   [_loginManager logInWithPermissions:permissions fromViewController:nil handler:requestHandler];
 };
 
+RCT_EXPORT_METHOD(limitedLogin:(NSArray<NSString *> *)permissions
+                  nonce:(NSString *)nonce
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+{
+    FBSDKLoginManagerLoginResultBlock requestHandler = ^(FBSDKLoginManagerLoginResult *result, NSError *error) {
+        if (error) {
+            reject(@"FacebookSDK", @"Login Failed", error);
+        } else {
+            NSString *userID = FBSDKProfile.currentProfile.userID;
+            NSString *idTokenString = FBSDKAuthenticationToken.currentAuthenticationToken.tokenString;
+            NSString *email = FBSDKProfile.currentProfile.email;
+            NSString *name = FBSDKProfile.currentProfile.name;
+            
+            resolve(RCTBuildResultDictionaryForLimitedLogin(result, email, idTokenString, userID, name));
+        }
+      };
+    
+    FBSDKLoginConfiguration *configuration;
+    if (nonce) {
+        configuration = [[FBSDKLoginConfiguration alloc] initWithPermissions:permissions
+                                                                                             tracking:FBSDKLoginTrackingLimited
+                                                  nonce:nonce];
+    } else {
+        configuration = [[FBSDKLoginConfiguration alloc] initWithPermissions:permissions
+                                                        tracking:FBSDKLoginTrackingLimited];
+    }
+    
+    
+    [_loginManager logInFromViewController:nil configuration:configuration completion:requestHandler];
+};
+
 RCT_EXPORT_METHOD(logOut)
 {
   [_loginManager logOut];
@@ -90,6 +122,17 @@ static NSDictionary *RCTBuildResultDictionary(FBSDKLoginManagerLoginResult *resu
     @"isCancelled": @(result.isCancelled),
     @"grantedPermissions": result.isCancelled ? [NSNull null] : result.grantedPermissions.allObjects,
     @"declinedPermissions": result.isCancelled ? [NSNull null] : result.declinedPermissions.allObjects,
+  };
+}
+
+static NSDictionary *RCTBuildResultDictionaryForLimitedLogin(FBSDKLoginManagerLoginResult *result, NSString* email, NSString* token, NSString* userId, NSString* name)
+{
+  return @{
+      @"isCancelled": @(result.isCancelled),
+      @"email": email,
+      @"id": userId,
+      @"token": token,
+      @"name": name
   };
 }
 
